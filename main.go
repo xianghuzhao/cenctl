@@ -32,6 +32,8 @@ func onReady() {
 	systray.SetTitle("Vboxctl")
 	systray.SetTooltip("Virtualbox Control")
 
+	mShutdown := systray.AddMenuItem("Shutdown", "Shutdown the system")
+	systray.AddSeparator()
 	mStart := systray.AddMenuItem("Start", "Start the VM")
 	mPoweroff := systray.AddMenuItem("Poweroff", "Poweroff the VM")
 	systray.AddSeparator()
@@ -47,7 +49,12 @@ func onReady() {
 				systray.SetIcon(stopIco)
 				poweroffVM()
 			case <-mExit.ClickedCh:
+				systray.Quit()
+				return
+			case <-mShutdown.ClickedCh:
 				poweroffVM()
+				time.Sleep(10 * time.Second)
+				runCmd("cmd", "/C", "shutdown", "/t", "0", "/s")
 				systray.Quit()
 				return
 			}
@@ -59,27 +66,25 @@ func onExit() {
 	logger.Println("Quit systray")
 }
 
+func runCmd(name string, arg ...string) {
+	cmd := exec.Command(name, arg...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	logger.Println("Poweroff VM")
+	err := cmd.Start()
+	if err != nil {
+		logger.Printf("Run command error: %s", err)
+	}
+}
+
 func startVM() {
 	go func() {
-		cmd := exec.Command("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "startvm", "Arch", "--type", "headless")
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		logger.Println("Start VM")
-		err := cmd.Start()
-		if err != nil {
-			logger.Printf("Run command error: %s", err)
-		}
+		runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "startvm", "Arch", "--type", "headless")
 	}()
 }
 
 func poweroffVM() {
 	go func() {
-		cmd := exec.Command("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "controlvm", "Arch", "acpipowerbutton")
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		logger.Println("Poweroff VM")
-		err := cmd.Start()
-		if err != nil {
-			logger.Printf("Run command error: %s", err)
-		}
+		runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "controlvm", "Arch", "acpipowerbutton")
 	}()
 }
 
@@ -98,15 +103,14 @@ func main() {
 
 	logger = log.New(f, "[VboxCtl] ", log.LstdFlags)
 
+	logger.Println("================================================================================")
 	logger.Println("Start application")
 	time.Sleep(10 * time.Second)
 	logger.Println("After waiting for 10 seconds")
 
 	startVM()
 
-	// Should be called at the very beginning of main().
 	systray.Run(onReady, onExit)
-	poweroffVM()
 
 	logger.Println("Exit application")
 	logger.Println("--------------------------------------------------------------------------------")
