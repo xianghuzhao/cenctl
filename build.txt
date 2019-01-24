@@ -1,2 +1,0 @@
-go build -ldflags="-H windowsgui" startvm.go
-go build -ldflags="-H windowsgui" poweroff.go

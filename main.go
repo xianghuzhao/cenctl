@@ -47,6 +47,7 @@ func onReady() {
 				systray.SetIcon(stopIco)
 				poweroffVM()
 			case <-mExit.ClickedCh:
+				poweroffVM()
 				systray.Quit()
 				return
 			}
@@ -98,8 +99,8 @@ func main() {
 	logger = log.New(f, "[VboxCtl] ", log.LstdFlags)
 
 	logger.Println("Start application")
-	time.Sleep(30 * time.Second)
-	logger.Println("After waiting for 30 seconds")
+	time.Sleep(10 * time.Second)
+	logger.Println("After waiting for 10 seconds")
 
 	startVM()
 
