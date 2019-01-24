@@ -37,6 +37,8 @@ func onReady() {
 	mStart := systray.AddMenuItem("Start", "Start the VM")
 	mPoweroff := systray.AddMenuItem("Poweroff", "Poweroff the VM")
 	systray.AddSeparator()
+	mPoweroffAndExit := systray.AddMenuItem("Poweroff and Exit", "Poweroff the VM and exit")
+	systray.AddSeparator()
 	mExit := systray.AddMenuItem("Exit", "Exit the whole app")
 
 	go func() {
@@ -44,16 +46,25 @@ func onReady() {
 			select {
 			case <-mStart.ClickedCh:
 				systray.SetIcon(startIco)
+				logger.Println("Start VM")
 				startVM()
 			case <-mPoweroff.ClickedCh:
 				systray.SetIcon(stopIco)
+				logger.Println("Poweroff VM")
 				poweroffVM()
+			case <-mPoweroffAndExit.ClickedCh:
+				logger.Println("Poweroff VM")
+				poweroffVM()
+				systray.Quit()
+				return
 			case <-mExit.ClickedCh:
 				systray.Quit()
 				return
 			case <-mShutdown.ClickedCh:
+				logger.Println("Poweroff VM")
 				poweroffVM()
 				time.Sleep(10 * time.Second)
+				logger.Println("Shutdown the system")
 				runCmd("cmd", "/C", "shutdown", "/t", "0", "/s")
 				systray.Quit()
 				return
@@ -69,7 +80,6 @@ func onExit() {
 func runCmd(name string, arg ...string) {
 	cmd := exec.Command(name, arg...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	logger.Println("Poweroff VM")
 	err := cmd.Start()
 	if err != nil {
 		logger.Printf("Run command error: %s", err)
@@ -108,6 +118,7 @@ func main() {
 	time.Sleep(10 * time.Second)
 	logger.Println("After waiting for 10 seconds")
 
+	logger.Println("Start VM")
 	startVM()
 
 	systray.Run(onReady, onExit)
