@@ -32,27 +32,28 @@ func onReady() {
 	systray.SetTitle("Vboxctl")
 	systray.SetTooltip("Virtualbox Control")
 
-	mShutdown := systray.AddMenuItem("Shutdown", "Shutdown the system")
+	mRebootPC := systray.AddMenuItem("Reboot PC", "Reboot the PC")
+	mShutdownPC := systray.AddMenuItem("Shutdown PC", "Shutdown the PC")
 	systray.AddSeparator()
-	mStart := systray.AddMenuItem("Start", "Start the VM")
-	mPoweroff := systray.AddMenuItem("Poweroff", "Poweroff the VM")
+	mStartVM := systray.AddMenuItem("Start VM", "Start the VM")
+	mPoweroffVM := systray.AddMenuItem("Poweroff VM", "Poweroff the VM")
 	systray.AddSeparator()
-	mPoweroffAndExit := systray.AddMenuItem("Poweroff and Exit", "Poweroff the VM and exit")
+	mPoweroffVMAndExit := systray.AddMenuItem("Poweroff VM and Exit", "Poweroff the VM and exit")
 	systray.AddSeparator()
 	mExit := systray.AddMenuItem("Exit", "Exit the whole app")
 
 	go func() {
 		for {
 			select {
-			case <-mStart.ClickedCh:
+			case <-mStartVM.ClickedCh:
 				systray.SetIcon(startIco)
 				logger.Println("Start VM")
 				startVM()
-			case <-mPoweroff.ClickedCh:
+			case <-mPoweroffVM.ClickedCh:
 				systray.SetIcon(stopIco)
 				logger.Println("Poweroff VM")
 				poweroffVM()
-			case <-mPoweroffAndExit.ClickedCh:
+			case <-mPoweroffVMAndExit.ClickedCh:
 				logger.Println("Poweroff VM")
 				poweroffVM()
 				systray.Quit()
@@ -60,12 +61,20 @@ func onReady() {
 			case <-mExit.ClickedCh:
 				systray.Quit()
 				return
-			case <-mShutdown.ClickedCh:
+			case <-mShutdownPC.ClickedCh:
 				logger.Println("Poweroff VM")
 				poweroffVM()
 				time.Sleep(10 * time.Second)
-				logger.Println("Shutdown the system")
+				logger.Println("Shutdown the PC")
 				runCmd("cmd", "/C", "shutdown", "/t", "0", "/s")
+				systray.Quit()
+				return
+			case <-mRebootPC.ClickedCh:
+				logger.Println("Poweroff VM")
+				poweroffVM()
+				time.Sleep(10 * time.Second)
+				logger.Println("Reboot the PC")
+				runCmd("cmd", "/C", "shutdown", "/t", "0", "/r")
 				systray.Quit()
 				return
 			}
