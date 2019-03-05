@@ -11,5 +11,5 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20150712133111-4e1c5567d7c2 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
-	golang.org/x/sys v0.0.0-20190123074212-c6b37f3e9285 // indirect
+	golang.org/x/sys v0.0.0-20190123074212-c6b37f3e9285
 )

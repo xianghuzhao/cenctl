@@ -9,9 +9,16 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/sys/windows/registry"
+
 	"github.com/getlantern/systray"
 
 	"github.com/xianghuzhao/vboxctl/icon"
+)
+
+var (
+	wininet, _           = syscall.LoadLibrary("wininet.dll")
+	internetSetOption, _ = syscall.GetProcAddress(wininet, "InternetSetOptionW")
 )
 
 var logger *log.Logger
@@ -32,6 +39,8 @@ func onReady() {
 	systray.SetTitle("Vboxctl")
 	systray.SetTooltip("Virtualbox Control")
 
+	mIEProxy := systray.AddMenuItem("Enable IE Proxy", "Enable IE Proxy")
+	systray.AddSeparator()
 	mRebootPC := systray.AddMenuItem("Reboot PC", "Reboot the PC")
 	mShutdownPC := systray.AddMenuItem("Shutdown PC", "Shutdown the PC")
 	systray.AddSeparator()
@@ -77,6 +86,14 @@ func onReady() {
 				runCmd("cmd", "/C", "shutdown", "/t", "0", "/r")
 				systray.Quit()
 				return
+			case <-mIEProxy.ClickedCh:
+				if mIEProxy.Checked() {
+					disableIEProxy()
+					mIEProxy.Uncheck()
+				} else {
+					enableIEProxy()
+					mIEProxy.Check()
+				}
 			}
 		}
 	}()
@@ -107,6 +124,52 @@ func poweroffVM() {
 	}()
 }
 
+func updateIEOption() {
+	ret, _, callErr := syscall.Syscall6(uintptr(internetSetOption),
+		4,
+		0,
+		95,
+		0,
+		0,
+		0,
+		0)
+	if callErr != 0 {
+		log.Print("Call MessageBox", callErr)
+	}
+	if ret == 0 {
+		log.Print("Run InternetSetOptionW error")
+	}
+	return
+}
+
+func enableIEProxy() {
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.ALL_ACCESS)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	defer key.Close()
+
+	key.SetStringValue("ProxyOverride", "<local>;localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*")
+	key.SetStringValue("ProxyServer", "127.0.0.1:3128")
+	key.SetDWordValue("ProxyEnable", 1)
+
+	updateIEOption()
+}
+
+func disableIEProxy() {
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.ALL_ACCESS)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+	defer key.Close()
+
+	key.SetDWordValue("ProxyEnable", 0)
+
+	updateIEOption()
+}
+
 func main() {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
@@ -129,6 +192,7 @@ func main() {
 
 	logger.Println("Start VM")
 	startVM()
+	disableIEProxy()
 
 	systray.Run(onReady, onExit)
 
