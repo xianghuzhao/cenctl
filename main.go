@@ -28,16 +28,16 @@ func onReady() {
 
 	startIco, err := icon.Asset("start.ico")
 	if err != nil {
-		logger.Println("Can not access asset start.ico: %s", err)
+		logger.Printf("Can not access asset start.ico: %s", err)
 	}
 	stopIco, err := icon.Asset("stop.ico")
 	if err != nil {
-		logger.Println("Can not access asset stop.ico: %s", err)
+		logger.Printf("Can not access asset stop.ico: %s", err)
 	}
 
 	systray.SetIcon(startIco)
 	systray.SetTitle("Vboxctl")
-	systray.SetTooltip("Virtualbox Control")
+	systray.SetTooltip("VirtualBox Control")
 
 	mIEProxy := systray.AddMenuItem("Enable IE Proxy", "Enable IE Proxy")
 	systray.AddSeparator()
