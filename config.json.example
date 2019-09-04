@@ -1,0 +1,18 @@
+{
+  "vm_name": "Arch",
+  "v2ray": {
+    "dir": "D:\\v2ray",
+    "config": [
+      {
+        "address": "host1",
+        "port": 12345,
+        "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      },
+      {
+        "address": "host2",
+        "port": 54321,
+        "id": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
+      }
+    ]
+  }
+}

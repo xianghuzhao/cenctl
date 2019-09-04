@@ -1,4 +1,4 @@
-# vboxctl
+# cenctl
 
 Build with:
 
