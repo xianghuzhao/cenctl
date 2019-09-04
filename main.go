@@ -57,7 +57,7 @@ func onReady() {
 	}
 
 	systray.SetIcon(startIco)
-	systray.SetTitle("Cenctl")
+	systray.SetTitle("CenCtl")
 	systray.SetTooltip("VirtualBox Control")
 
 	var cases []reflect.SelectCase
@@ -318,7 +318,7 @@ func main() {
 	}
 	defer f.Close()
 
-	logger = log.New(f, "[Cenctl] ", log.LstdFlags)
+	logger = log.New(f, "[CenCtl] ", log.LstdFlags)
 
 	logger.Println("================================================================================")
 	logger.Println("Start application")
@@ -334,7 +334,7 @@ func main() {
 	}()
 
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 		logger.Println("After waiting for 10 seconds")
 
 		logger.Println("Start VM")
