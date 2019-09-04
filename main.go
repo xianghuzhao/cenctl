@@ -58,7 +58,7 @@ func onReady() {
 
 	systray.SetIcon(startIco)
 	systray.SetTitle("CenCtl")
-	systray.SetTooltip("VirtualBox Control")
+	systray.SetTooltip("Center Control")
 
 	var cases []reflect.SelectCase
 
