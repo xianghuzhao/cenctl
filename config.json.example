@@ -1,7 +1,7 @@
 {
   "vm_name": "Arch",
   "stop_proc": [
-      "watch-tjupt.exe",
+      "background.exe",
       "wv2ray.exe"
   ],
   "v2ray": {
