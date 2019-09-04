@@ -29,8 +29,9 @@ var logger *log.Logger
 var configFilename = "config.json"
 
 type config struct {
-	VMName string `json:"vm_name"`
-	V2ray  struct {
+	VMName   string   `json:"vm_name"`
+	StopProc []string `json:"stop_proc"`
+	V2ray    struct {
 		Dir    string `json:"dir"`
 		Config []struct {
 			Address string `json:"address"`
@@ -66,21 +67,31 @@ func onReady() {
 	cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mIEProxy.ClickedCh)})
 
 	systray.AddSeparator()
-
 	v2rayItemStart := len(cases)
+
 	var mV2rayItems []*systray.MenuItem
 	curV2rayItem := currentV2rayConfig()
 	for _, v2rayItem := range cfg.V2ray.Config {
-		mV2rayItem := systray.AddMenuItem("V2ray: "+v2rayItem.Address, v2rayItem.Address)
-		mV2rayItems = append(mV2rayItems, mV2rayItem)
+		mV2rayItem := systray.AddMenuItem("V2ray: "+v2rayItem.Address, "V2ray: "+v2rayItem.Address)
 		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mV2rayItem.ClickedCh)})
+		mV2rayItems = append(mV2rayItems, mV2rayItem)
 		if v2rayItem.Address == curV2rayItem {
 			mV2rayItem.Check()
 		}
 	}
-	v2rayItemStop := len(cases)
 
 	systray.AddSeparator()
+	stopProcItemStart := len(cases)
+
+	var mStopProcItems []*systray.MenuItem
+	for _, stopProcItem := range cfg.StopProc {
+		mStopProcItem := systray.AddMenuItem("Stop: "+stopProcItem, "Stop: "+stopProcItem)
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mStopProcItem.ClickedCh)})
+		mStopProcItems = append(mStopProcItems, mStopProcItem)
+	}
+
+	systray.AddSeparator()
+	poweroffItemStart := len(cases)
 
 	mRebootPC := systray.AddMenuItem("Reboot PC", "Reboot the PC")
 	cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mRebootPC.ClickedCh)})
@@ -113,12 +124,14 @@ func onReady() {
 			case chosen == 0:
 				if mIEProxy.Checked() {
 					disableIEProxy()
+					logger.Println("IE proxy disabled")
 					mIEProxy.Uncheck()
 				} else {
 					enableIEProxy()
+					logger.Println("IE proxy enabled")
 					mIEProxy.Check()
 				}
-			case chosen >= v2rayItemStart && chosen < v2rayItemStop:
+			case chosen >= v2rayItemStart && chosen < stopProcItemStart:
 				for i, v2rayItem := range cfg.V2ray.Config {
 					mV2rayItem := mV2rayItems[i]
 					if i+v2rayItemStart == chosen {
@@ -133,7 +146,11 @@ func onReady() {
 						}
 					}
 				}
-			case chosen == v2rayItemStop:
+			case chosen >= stopProcItemStart && chosen < poweroffItemStart:
+				procToStop := cfg.StopProc[chosen-stopProcItemStart]
+				logger.Printf("Stop proc \"%s\"\n", procToStop)
+				runCmd("taskkill", "/IM", procToStop, "/F")
+			case chosen == poweroffItemStart:
 				logger.Println("Poweroff VM")
 				poweroffVM()
 				time.Sleep(10 * time.Second)
@@ -141,7 +158,7 @@ func onReady() {
 				runCmd("cmd", "/C", "shutdown", "/t", "0", "/r")
 				systray.Quit()
 				return
-			case chosen == v2rayItemStop+1:
+			case chosen == poweroffItemStart+1:
 				logger.Println("Poweroff VM")
 				poweroffVM()
 				time.Sleep(10 * time.Second)
@@ -149,20 +166,20 @@ func onReady() {
 				runCmd("cmd", "/C", "shutdown", "/t", "0", "/s")
 				systray.Quit()
 				return
-			case chosen == v2rayItemStop+2:
+			case chosen == poweroffItemStart+2:
 				systray.SetIcon(startIco)
 				logger.Println("Start VM")
 				startVM()
-			case chosen == v2rayItemStop+3:
+			case chosen == poweroffItemStart+3:
 				systray.SetIcon(stopIco)
 				logger.Println("Poweroff VM")
 				poweroffVM()
-			case chosen == v2rayItemStop+4:
+			case chosen == poweroffItemStart+4:
 				logger.Println("Poweroff VM")
 				poweroffVM()
 				systray.Quit()
 				return
-			case chosen == v2rayItemStop+5:
+			case chosen == poweroffItemStart+5:
 				systray.Quit()
 				return
 			}

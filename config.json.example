@@ -1,5 +1,9 @@
 {
   "vm_name": "Arch",
+  "stop_proc": [
+      "watch-tjupt.exe",
+      "wv2ray.exe"
+  ],
   "v2ray": {
     "dir": "D:\\v2ray",
     "config": [
