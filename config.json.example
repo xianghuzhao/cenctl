@@ -1,11 +1,15 @@
 {
   "vm_name": "Arch",
+  "auto_start": [
+    ["notepad", "D:\\file.txt"]
+  ],
   "stop_proc": [
       "background.exe",
       "wv2ray.exe"
   ],
   "v2ray": {
     "dir": "D:\\v2ray",
+    "config_file": "config-real.json",
     "config": [
       {
         "address": "host1",

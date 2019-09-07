@@ -29,11 +29,13 @@ var logger *log.Logger
 var configFilename = "config.json"
 
 type config struct {
-	VMName   string   `json:"vm_name"`
-	StopProc []string `json:"stop_proc"`
-	V2ray    struct {
-		Dir    string `json:"dir"`
-		Config []struct {
+	VMName    string     `json:"vm_name"`
+	AutoStart [][]string `json:"auto_start"`
+	StopProc  []string   `json:"stop_proc"`
+	V2ray     struct {
+		Dir        string `json:"dir"`
+		ConfigFile string `json:"config_file"`
+		Config     []struct {
 			Address string `json:"address"`
 			Port    int    `json:"port"`
 			ID      string `json:"id"`
@@ -200,16 +202,25 @@ func runCmd(name string, arg ...string) {
 	}
 }
 
+func runCmdAndWait(name string, arg ...string) {
+	cmd := exec.Command(name, arg...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	err := cmd.Start()
+	if err != nil {
+		logger.Printf("Run command error: %s\n", err)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		logger.Printf("Command finished with error: %s\n", err)
+	}
+}
+
 func startVM() {
-	go func() {
-		runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "startvm", cfg.VMName, "--type", "headless")
-	}()
+	runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "startvm", cfg.VMName, "--type", "headless")
 }
 
 func poweroffVM() {
-	go func() {
-		runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "controlvm", cfg.VMName, "acpipowerbutton")
-	}()
+	runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "controlvm", cfg.VMName, "acpipowerbutton")
 }
 
 func updateIEOption() {
@@ -259,11 +270,11 @@ func disableIEProxy() {
 }
 
 func startV2ray() {
-	runCmd(path.Join(cfg.V2ray.Dir, "wv2ray.exe"), "-config", path.Join(cfg.V2ray.Dir, "config-real.json"))
+	runCmdAndWait(path.Join(cfg.V2ray.Dir, "wv2ray.exe"), "-config", path.Join(cfg.V2ray.Dir, cfg.V2ray.ConfigFile))
 }
 
 func stopV2ray() {
-	runCmd("taskkill", "/IM", "wv2ray.exe", "/F")
+	runCmdAndWait("taskkill", "/IM", "wv2ray.exe", "/F")
 }
 
 func switchV2ray(address string, port int, id string) {
@@ -283,9 +294,9 @@ func switchV2ray(address string, port int, id string) {
 }
 
 func loadV2rayConfig() {
-	buffer, err := ioutil.ReadFile(path.Join(cfg.V2ray.Dir, "config-real.json"))
+	buffer, err := ioutil.ReadFile(path.Join(cfg.V2ray.Dir, cfg.V2ray.ConfigFile))
 	if err != nil {
-		logger.Panicf("V2ray config file \"%s\" read error: %s\n", "config-real.json", err)
+		logger.Panicf("V2ray config file \"%s\" read error: %s\n", cfg.V2ray.ConfigFile, err)
 	}
 
 	err = json.Unmarshal(buffer, &cfgV2ray)
@@ -300,9 +311,9 @@ func saveV2rayConfig() {
 		logger.Printf("Save v2ray config error: %s\n", err)
 	}
 
-	err = ioutil.WriteFile(path.Join(cfg.V2ray.Dir, "config-real.json"), data, 0644)
+	err = ioutil.WriteFile(path.Join(cfg.V2ray.Dir, cfg.V2ray.ConfigFile), data, 0644)
 	if err != nil {
-		logger.Panicf("V2ray config file \"%s\" write error: %s\n", "config-real.json", err)
+		logger.Panicf("V2ray config file \"%s\" write error: %s\n", cfg.V2ray.ConfigFile, err)
 	}
 }
 
@@ -319,6 +330,16 @@ func loadConfig(dir string) {
 	err = json.Unmarshal(buffer, &cfg)
 	if err != nil {
 		logger.Panicf("Parse config error: %s\n", err)
+	}
+}
+
+func autoStart() {
+	for _, autoStartItem := range cfg.AutoStart {
+		if len(autoStartItem) < 1 {
+			logger.Println("Auto start command no valid")
+			continue
+		}
+		runCmd(autoStartItem[0], autoStartItem[1:]...)
 	}
 }
 
@@ -343,6 +364,10 @@ func main() {
 	loadConfig(dir)
 
 	loadV2rayConfig()
+
+	go func() {
+		autoStart()
+	}()
 
 	go func() {
 		stopV2ray()
