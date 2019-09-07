@@ -10,13 +10,13 @@
     {
       "name": "wv2ray.exe",
       "path": "D:\\wv2ray.exe",
-      "args": ["-config", "D:\\config-real.json"],
+      "args": ["-config", "D:\\config_new.json"],
       "auto_start": false
     }
   ],
   "v2ray": {
     "dir": "D:\\v2ray",
-    "config_file": "config-real.json",
+    "config_file": "config_new.json",
     "config": [
       {
         "address": "host1",
