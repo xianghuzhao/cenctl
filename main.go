@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,11 +30,17 @@ var logger *log.Logger
 
 var configFilename = "config.json"
 
+type proc struct {
+	Name      string   `json:"name"`
+	Path      string   `json:"path"`
+	Args      []string `json:"args"`
+	AutoStart bool     `json:"auto_start"`
+}
+
 type config struct {
-	VMName    string     `json:"vm_name"`
-	AutoStart [][]string `json:"auto_start"`
-	StopProc  []string   `json:"stop_proc"`
-	V2ray     struct {
+	VMName string `json:"vm_name"`
+	Proc   []proc `json:"proc"`
+	V2ray  struct {
 		Dir        string `json:"dir"`
 		ConfigFile string `json:"config_file"`
 		Config     []struct {
@@ -46,6 +54,48 @@ type config struct {
 var cfg config
 
 var cfgV2ray map[string]interface{}
+
+func (p proc) started() bool {
+	cmd := exec.Command("tasklist", "/FI", "IMAGENAME eq "+p.Name)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		logger.Printf("Get output for tasklist error: %s\n", err)
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		logger.Printf("Run tasklist command error: %s\n", err)
+	}
+
+	started := false
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), p.Name) {
+			started = true
+			break
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Printf("Reading tasklist output error: %s\n", err)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		logger.Printf("Command finished with error: %s\n", err)
+	}
+
+	return started
+}
+
+func (p proc) start() {
+	runCmd(p.Path, p.Args...)
+}
+
+func (p proc) stop() {
+	runCmdAndWait("taskkill", "/IM", p.Name, "/F")
+}
 
 func onReady() {
 	logger.Println("Create systray")
@@ -83,13 +133,16 @@ func onReady() {
 	}
 
 	systray.AddSeparator()
-	stopProcItemStart := len(cases)
+	procItemStart := len(cases)
 
-	var mStopProcItems []*systray.MenuItem
-	for _, stopProcItem := range cfg.StopProc {
-		mStopProcItem := systray.AddMenuItem("Stop: "+stopProcItem, "Stop: "+stopProcItem)
-		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mStopProcItem.ClickedCh)})
-		mStopProcItems = append(mStopProcItems, mStopProcItem)
+	var mProcItems []*systray.MenuItem
+	for _, p := range cfg.Proc {
+		mProcItem := systray.AddMenuItem("Proc: "+p.Name, "Proc: "+p.Name)
+		cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mProcItem.ClickedCh)})
+		mProcItems = append(mProcItems, mProcItem)
+		if p.AutoStart || p.started() {
+			mProcItem.Check()
+		}
 	}
 
 	systray.AddSeparator()
@@ -133,7 +186,7 @@ func onReady() {
 					logger.Println("IE proxy enabled")
 					mIEProxy.Check()
 				}
-			case chosen >= v2rayItemStart && chosen < stopProcItemStart:
+			case chosen >= v2rayItemStart && chosen < procItemStart:
 				for i, v2rayItem := range cfg.V2ray.Config {
 					mV2rayItem := mV2rayItems[i]
 					if i+v2rayItemStart == chosen {
@@ -148,10 +201,18 @@ func onReady() {
 						}
 					}
 				}
-			case chosen >= stopProcItemStart && chosen < poweroffItemStart:
-				procToStop := cfg.StopProc[chosen-stopProcItemStart]
-				logger.Printf("Stop proc \"%s\"\n", procToStop)
-				runCmd("taskkill", "/IM", procToStop, "/F")
+			case chosen >= procItemStart && chosen < poweroffItemStart:
+				p := cfg.Proc[chosen-procItemStart]
+				mProcItem := mProcItems[chosen-procItemStart]
+				if mProcItem.Checked() {
+					logger.Printf("Stop proc \"%s\"\n", p.Name)
+					p.stop()
+					mProcItem.Uncheck()
+				} else {
+					logger.Printf("Start proc \"%s\"\n", p.Name)
+					p.start()
+					mProcItem.Check()
+				}
 			case chosen == poweroffItemStart:
 				logger.Println("Poweroff VM")
 				poweroffVM()
@@ -334,12 +395,15 @@ func loadConfig(dir string) {
 }
 
 func autoStart() {
-	for _, autoStartItem := range cfg.AutoStart {
-		if len(autoStartItem) < 1 {
-			logger.Println("Auto start command no valid")
+	for _, p := range cfg.Proc {
+		if !p.AutoStart {
 			continue
 		}
-		runCmd(autoStartItem[0], autoStartItem[1:]...)
+		if p.started() {
+			logger.Printf("Command already started: %s\n", p.Name)
+			continue
+		}
+		p.start()
 	}
 }
 
@@ -367,12 +431,6 @@ func main() {
 
 	go func() {
 		autoStart()
-	}()
-
-	go func() {
-		stopV2ray()
-		time.Sleep(time.Second)
-		startV2ray()
 	}()
 
 	go func() {
