@@ -171,7 +171,6 @@ func onReady() {
 	cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(mExit.ClickedCh)})
 
 	go func() {
-
 		for {
 			chosen, _, _ := reflect.Select(cases)
 
@@ -331,7 +330,7 @@ func disableIEProxy() {
 }
 
 func startV2ray() {
-	runCmdAndWait(path.Join(cfg.V2ray.Dir, "wv2ray.exe"), "-config", path.Join(cfg.V2ray.Dir, cfg.V2ray.ConfigFile))
+	runCmd(path.Join(cfg.V2ray.Dir, "wv2ray.exe"), "-config", path.Join(cfg.V2ray.Dir, cfg.V2ray.ConfigFile))
 }
 
 func stopV2ray() {
@@ -403,6 +402,7 @@ func autoStart() {
 			logger.Printf("Command already started: %s\n", p.Name)
 			continue
 		}
+		logger.Printf("Auto start command: %s\n", p.Name)
 		p.start()
 	}
 }

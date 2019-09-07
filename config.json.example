@@ -1,11 +1,18 @@
 {
   "vm_name": "Arch",
-  "auto_start": [
-    ["notepad", "D:\\file.txt"]
-  ],
-  "stop_proc": [
-      "background.exe",
-      "wv2ray.exe"
+  "proc": [
+    {
+      "name": "frpc.exe",
+      "path": "D:\\frpc.exe",
+      "args": ["-c", "D:\\frpc.ini"],
+      "auto_start": true
+    },
+    {
+      "name": "wv2ray.exe",
+      "path": "D:\\wv2ray.exe",
+      "args": ["-config", "D:\\config-real.json"],
+      "auto_start": false
+    }
   ],
   "v2ray": {
     "dir": "D:\\v2ray",
