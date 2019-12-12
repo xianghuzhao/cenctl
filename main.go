@@ -41,6 +41,7 @@ type proc struct {
 type config struct {
 	VBox struct {
 		VMName  string `json:"vm_name"`
+		SSHHost string `json:"ssh_host"`
 		HostKey string `json:"host_key"`
 		SSHKey  string `json:"ssh_key"`
 	} `json:"vbox"`
@@ -313,7 +314,7 @@ func sshPoweroffVM() {
 		},
 		HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
-	client, err := ssh.Dial("tcp", "192.168.6.22:22", config)
+	client, err := ssh.Dial("tcp", cfg.VBox.SSHHost, config)
 	if err != nil {
 		log.Printf("Failed to dial: %s", err)
 		return
