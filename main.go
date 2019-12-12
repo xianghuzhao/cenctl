@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/sys/windows/registry"
 
 	"github.com/getlantern/systray"
@@ -38,9 +39,13 @@ type proc struct {
 }
 
 type config struct {
-	VMName string `json:"vm_name"`
-	Proc   []proc `json:"proc"`
-	V2ray  struct {
+	VBox struct {
+		VMName  string `json:"vm_name"`
+		HostKey string `json:"host_key"`
+		SSHKey  string `json:"ssh_key"`
+	} `json:"vbox"`
+	Proc  []proc `json:"proc"`
+	V2ray struct {
 		Dir        string `json:"dir"`
 		ConfigFile string `json:"config_file"`
 		Config     []struct {
@@ -276,11 +281,59 @@ func runCmdAndWait(name string, arg ...string) {
 }
 
 func startVM() {
-	runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "startvm", cfg.VMName, "--type", "headless")
+	runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "startvm", cfg.VBox.VMName, "--type", "headless")
+}
+
+func acpiPoweroffVM() {
+	runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "controlvm", cfg.VBox.VMName, "acpipowerbutton")
+}
+
+func sshPoweroffVM() {
+	key, err := ioutil.ReadFile(cfg.VBox.SSHKey)
+	if err != nil {
+		logger.Printf("Unable to read private key: %s", err)
+		return
+	}
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		log.Printf("Unable to parse private key: %s", err)
+		return
+	}
+
+	_, _, hostKey, _, _, err := ssh.ParseKnownHosts([]byte(cfg.VBox.HostKey))
+	if err != nil {
+		log.Printf("Failed to get host key: %s", err)
+		return
+	}
+
+	config := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.FixedHostKey(hostKey),
+	}
+	client, err := ssh.Dial("tcp", "192.168.6.22:22", config)
+	if err != nil {
+		log.Printf("Failed to dial: %s", err)
+		return
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		log.Printf("Failed to create session: %s", err)
+		return
+	}
+	defer session.Close()
+
+	if err := session.Run("/usr/bin/poweroff"); err != nil {
+		log.Printf("Failed to poweroff: %s", err)
+		return
+	}
 }
 
 func poweroffVM() {
-	runCmd("C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe", "controlvm", cfg.VMName, "acpipowerbutton")
+	sshPoweroffVM()
 }
 
 func updateIEOption() {

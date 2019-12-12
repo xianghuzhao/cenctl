@@ -1,5 +1,9 @@
 {
-  "vm_name": "Arch",
+  "vbox": {
+    "vm_name": "Arch",
+    "host_key": "hostname ecdsa-sha2-nistp256 AAAABBBBCCCCLineFromKnownHosts",
+    "ssh_key": "D:\\ssh\\id_rsa"
+  },
   "proc": [
     {
       "name": "frpc.exe",
